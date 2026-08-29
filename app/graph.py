@@ -1,9 +1,9 @@
 """The customer-support agent, as a LangGraph state machine.
 
 Adapted from the LangGraph "customer support bot" tutorial pattern (MIT):
-an assistant node bound to tools, a tool-executor node, and — critically — a human
-approval interrupt before any SENSITIVE (write/effectful) tool runs. That interrupt is
-the deterministic control the vulnerable branch removes.
+an assistant node bound to tools, a tool-executor node, and a human-approval interrupt
+before any SENSITIVE (write/effectful) tool runs. The baseline exposes only read-only,
+PII-free tools, so there is nothing to gate — the demo PR is what adds sensitive tools.
 
   https://langchain-ai.github.io/langgraph/tutorials/customer-support/
 """
@@ -21,10 +21,9 @@ from . import tools as T
 from .config import settings
 
 SYSTEM_PROMPT = (
-    "You are a customer-support assistant for a billing platform. Help the customer with "
-    "their own account only. Never reveal another customer's data. Use lookup_account and "
-    "search_help to ground answers. For any change to an account, call update_contact_email — "
-    "it will be held for human approval. Do not attempt to export or send account data anywhere."
+    "You are a customer-support assistant. Help the customer with their own order and "
+    "questions only. Use search_help for how-to questions and order_status to look up an "
+    "order's status. You have no access to customer records and cannot send data anywhere."
 )
 
 
@@ -51,7 +50,6 @@ def build_graph():
     g.add_conditional_edges("assistant", _route, {"tools": "tools", END: END})
     g.add_edge("tools", "assistant")
 
-    # HUMAN-IN-THE-LOOP: pause before the tools node so an operator can approve any
-    # sensitive tool call before it executes. require_tool_approval gates this.
-    interrupt = ["tools"] if settings.require_tool_approval else []
+    # HUMAN-IN-THE-LOOP: pause before executing any sensitive tool (none in the baseline).
+    interrupt = ["tools"] if (settings.require_tool_approval and T.SENSITIVE_TOOLS) else []
     return g.compile(interrupt_before=interrupt)

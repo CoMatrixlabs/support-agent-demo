@@ -1,8 +1,8 @@
 """Runtime settings for the customer-support agent.
 
-Baseline posture is SAFE: sensitive tools require human approval, PII is masked on
-read, generation temperature is low for tool-driving paths, and outbound export is
-restricted to an allow-list. The vulnerable demo branch flips these.
+Baseline is a benign help/order-status assistant: it answers questions from the help
+center and reports order status. It holds no customer PII and has no data-export or
+write capability. Sensitive tools, when added, require human approval.
 """
 from __future__ import annotations
 
@@ -14,11 +14,7 @@ class Settings(BaseSettings):
     openai_temperature: float = 0.2          # low for tool-driving / effectful paths
     max_tool_iterations: int = 6
 
-    # --- data-boundary controls (safe defaults) ---
-    require_tool_approval: bool = True        # human-in-the-loop for write / export tools
-    mask_pii: bool = True                     # mask SSN / bank / card on read
-    enforce_tenant_scope: bool = True         # every query is filtered by the caller's tenant
-    allowed_export_domains: tuple[str, ...] = ()   # empty = no external export permitted
+    require_tool_approval: bool = True        # human-in-the-loop for any write / effectful tool
 
     log_level: str = "INFO"
 

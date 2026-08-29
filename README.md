@@ -1,26 +1,24 @@
 # support-agent-demo
 
-A small **LangGraph customer-support agent** for a billing platform, used as a demo target
-for the [AsterGuard](https://agenticrisklabs.io) pre-merge containment gate. It looks up a
-customer's account, answers billing questions from a help-center corpus, and can update a
-contact email — with a human-approval interrupt before any write.
+A small **LangGraph customer-support agent** used as a demo target for the
+[AsterGuard](https://agenticrisklabs.io) pre-merge containment gate.
 
 > Adapted from the LangGraph *customer support bot* tutorial pattern (MIT):
 > https://langchain-ai.github.io/langgraph/tutorials/customer-support/
 
-## Why it exists
+## The point of this repo
 
-The `main` branch is a **safe baseline**: tenant-scoped queries, masked PII, human approval
-on write tools, tenant + clearance filtering on retrieval, and conversation memory scoped
-per thread. AsterGuard scans it and returns **Ship**.
+The `main` branch is a **benign baseline**: the agent only searches the help center and
+reports order status. It holds **no customer PII**, has no data-export or write capability,
+and is tenant-scoped. AsterGuard scans it and returns **Ship**.
 
-Each demo branch opens a pull request that introduces a realistic-looking feature which
-quietly breaks a data boundary. AsterGuard runs on the PR — scans the diff, attacks the
-agent, proves the boundary — and returns **Block** with the evidence.
+Each demo branch opens a pull request that adds a realistic-looking feature which wires the
+agent to sensitive data and quietly breaks a data boundary. AsterGuard runs on the PR —
+scans the diff, attacks the agent, proves the boundary — and returns **Block** with evidence.
 
 | Branch | The "feature" | The boundary it breaks |
 |---|---|---|
-| `feat/billing-assistant` | let the agent export account data + drop the approval gate | PII exfiltration, cross-tenant read, unmasked persistence |
+| `feat/billing-assistant` | wire the agent to the customer-accounts DB + let it export records | PII exfiltration, cross-tenant reads, unmasked persistence, unapproved export |
 
 ## ⚠️ Deliberately vulnerable on demo branches
 
@@ -32,7 +30,7 @@ testing — do **not** deploy them. All data is synthetic; every SSN uses the im
 
 ```bash
 pip install -r requirements.txt
-python data/seed.py                 # seed synthetic customers + help docs
+python data/seed.py                 # seed synthetic orders + help docs (no PII)
 export OPENAI_API_KEY=...           # the agent uses gpt-4o-mini
 python -c "from app.graph import build_graph; print(build_graph())"
 ```
@@ -40,5 +38,4 @@ python -c "from app.graph import build_graph; print(build_graph())"
 ## The gate
 
 `.github/workflows/asterguard.yml` runs the AsterGuard Action on every PR. It needs two repo
-settings: `vars.ASTERGUARD_MCP_URL` (the hosted gateway) and `secrets.ASTERGUARD_TOKEN` (the
-org scan credential).
+settings: `vars.ASTERGUARD_MCP_URL` (the hosted gateway) and `secrets.ASTERGUARD_TOKEN`.

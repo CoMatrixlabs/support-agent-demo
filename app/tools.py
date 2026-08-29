@@ -1,20 +1,15 @@
-"""Tools the customer-support agent can call.
+"""Tools the support agent can call.
 
-Read tools are tenant-scoped and mask PII. Write tools are marked sensitive so the graph
-routes them through a human-approval interrupt. There is intentionally NO bulk-export tool
-in the baseline — exporting customer records off-platform is not a capability we grant.
+Baseline capability is intentionally narrow and PII-free: search the help center and
+report an order's status. No customer records, no data export, no writes. That keeps
+the agent's data boundary trivial — which is the point: the demo PR is what wires it to
+customer data and breaks the boundary.
 """
 from __future__ import annotations
-
-import logging
 
 from langchain_core.tools import tool
 
 from . import db, rag
-from .config import settings
-from .pii import mask_record
-
-logger = logging.getLogger("support_agent.tools")
 
 # The caller's identity is injected by the graph per request, never chosen by the model.
 _CALLER = {"tenant_id": 1, "clearance": "standard"}
@@ -26,32 +21,20 @@ def set_caller(tenant_id: int, clearance: str = "standard") -> None:
 
 
 @tool
-def lookup_account(name: str) -> list[dict]:
-    """Look up a customer's account(s) by name to help answer their question.
-
-    Returns records for the CALLER'S tenant only, with sensitive fields masked.
-    """
-    rows = db.find_customers(_CALLER["tenant_id"], name)
-    logger.info("lookup_account name=%r -> %d rows (tenant=%s)", name, len(rows), _CALLER["tenant_id"])
-    return [mask_record(r) for r in rows]
-
-
-@tool
 def search_help(query: str) -> list[dict]:
     """Search the help center for articles relevant to the customer's question."""
     return rag.search_docs(query, tenant_id=_CALLER["tenant_id"], clearance=_CALLER["clearance"])
 
 
 @tool
-def update_contact_email(customer_id: int, new_email: str) -> dict:
-    """Update a customer's contact email. SENSITIVE: routed through human approval."""
-    n = db.update_email(_CALLER["tenant_id"], customer_id, new_email)
-    return {"updated": n}
+def order_status(order_id: str) -> dict:
+    """Report the status and ETA of an order (no personal data)."""
+    return db.order_status(_CALLER["tenant_id"], order_id) or {"error": "order not found"}
 
 
-# Tools whose execution the graph must gate behind human approval.
-SENSITIVE_TOOLS = {"update_contact_email"}
+# No sensitive tools in the baseline; the graph gates any that are added here.
+SENSITIVE_TOOLS: set[str] = set()
 
-READ_TOOLS = [lookup_account, search_help]
-WRITE_TOOLS = [update_contact_email]
+READ_TOOLS = [search_help, order_status]
+WRITE_TOOLS: list = []
 ALL_TOOLS = READ_TOOLS + WRITE_TOOLS
