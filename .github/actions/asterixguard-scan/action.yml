@@ -136,6 +136,8 @@ runs:
         APP_ID:  ${{ inputs.app-id }}
         API_URL: ${{ inputs.api-url }}
         SCAN_DIR: ${{ steps.scan.outputs.scan_dir }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        PR_URL: ${{ github.event.pull_request.html_url }}
       run: |
         set -euo pipefail
         # Fall back to the hosted demo endpoint if the repo var is unset/empty, so the action
@@ -199,9 +201,6 @@ runs:
           echo "$RESP" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("comment_markdown",""))'
           echo "__ASTERIX_EOF__"
         } >> "$GITHUB_OUTPUT"
-      env:
-        PR_NUMBER: ${{ github.event.pull_request.number }}
-        PR_URL: ${{ github.event.pull_request.html_url }}
 
     - name: Post sticky PR comment
       if: github.event_name == 'pull_request'
