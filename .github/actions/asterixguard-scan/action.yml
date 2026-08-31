@@ -147,15 +147,17 @@ runs:
         tar czf scan.tar.gz "$(basename "$SCAN_DIR")"
         TARBALL_B64=$(base64 < scan.tar.gz | tr -d '\n')
 
-        BRANCH="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
-        SHA="$GITHUB_SHA"
-        AUTHOR="$GITHUB_ACTOR"
-        REPO_NAME="${GITHUB_REPOSITORY##*/}"
-        REPO_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}"
+        export BRANCH="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
+        export SHA="$GITHUB_SHA"
+        export AUTHOR="$GITHUB_ACTOR"
+        export REPO_NAME="${GITHUB_REPOSITORY##*/}"
+        export REPO_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}"
+        export TARBALL_B64
         PR_NUMBER="${PR_NUMBER:-}"
         PR_URL="${PR_URL:-}"
 
-        # JSON body via Python (safer than bash heredoc + quoting)
+        # JSON body via Python (safer than bash heredoc + quoting) — reads the exported env vars above
+        BODY=$(python3 - <<PY
         BODY=$(python3 - <<PY
         import json, os
         body = {
