@@ -36,5 +36,11 @@ jobs:
           # AsterixGuard API endpoint. Defaults to the hosted demo endpoint below; override with
           # a repo variable ASTERIXGUARD_API_URL (e.g. your self-hosted URL) without editing this file.
           api-url: ${{ vars.ASTERIXGUARD_API_URL || 'https://demo.agenticrisklabs.io/api/cicd' }}
+          # Headless behavioral tests: point at the agent's live /invoke endpoint (reachable from the
+          # AsterixGuard server). Set repo variable ASTERIXGUARD_AGENT_URL to your staging agent; if
+          # empty, the server uses the app's configured target (else behavioral is skipped).
+          agent-url: ${{ vars.ASTERIXGUARD_AGENT_URL || '' }}
+          behavioral-workflow: ${{ vars.ASTERIXGUARD_BEHAVIORAL_WORKFLOW || 'security-review' }}
+          behavioral-methodology: ${{ vars.ASTERIXGUARD_BEHAVIORAL_METHODOLOGY || '' }}
           # If you have asterllmguard2 on a private wheel/git ref, override here.
           # scanner-install-cmd: pip install git+https://${{ secrets.SCANNER_TOKEN }}@github.com/your/asterllmguard2.git@main
