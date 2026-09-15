@@ -42,5 +42,7 @@ jobs:
           agent-url: ${{ vars.ASTERIXGUARD_AGENT_URL || '' }}
           behavioral-workflow: ${{ vars.ASTERIXGUARD_BEHAVIORAL_WORKFLOW || 'security-review' }}
           behavioral-methodology: ${{ vars.ASTERIXGUARD_BEHAVIORAL_METHODOLOGY || '' }}
+          # 'scripted' = deterministic, repeatable suite (stable CI gate); 'llm' = adaptive.
+          behavioral-mode: ${{ vars.ASTERIXGUARD_BEHAVIORAL_MODE || 'scripted' }}
           # If you have asterllmguard2 on a private wheel/git ref, override here.
           # scanner-install-cmd: pip install git+https://${{ secrets.SCANNER_TOKEN }}@github.com/your/asterllmguard2.git@main

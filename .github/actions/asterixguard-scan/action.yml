@@ -38,6 +38,10 @@ inputs:
     description: 'How long to wait for the headless behavioral run to finish.'
     required: false
     default: '600'
+  behavioral-mode:
+    description: 'Behavioral engine: "scripted" = a fixed, repeatable suite with deterministic oracles (stable CI gate); "llm" = the adaptive Attacker/Judge (richer, varies run-to-run).'
+    required: false
+    default: 'scripted'
 
 outputs:
   gate:
@@ -161,6 +165,7 @@ runs:
         AGENT_URL: ${{ inputs.agent-url }}
         WF: ${{ inputs.behavioral-workflow }}
         METH: ${{ inputs.behavioral-methodology }}
+        MODE: ${{ inputs.behavioral-mode }}
         TIMEOUT: ${{ inputs.behavioral-timeout-seconds }}
         COMMENT: ${{ steps.realscan.outputs.comment_path }}
       run: |
@@ -169,7 +174,7 @@ runs:
         SHA="$GITHUB_SHA"
         PHDR=(-H 'content-type: application/json'); [ -n "${ARS_TOKEN:-}" ] && PHDR+=(-H "X-ARS-Token: ${ARS_TOKEN}")
         GHDR=(); [ -n "${ARS_TOKEN:-}" ] && GHDR+=(-H "X-ARS-Token: ${ARS_TOKEN}")
-        BODY=$(APP="$APP_ID" SHA="$SHA" python3 -c 'import json,os; b={"app":os.environ["APP"],"commit":os.environ["SHA"],"workflow":os.environ.get("WF") or "security-review","methodology":os.environ.get("METH") or ""}; au=os.environ.get("AGENT_URL"); b.update({"agent_url":au} if au else {}); print(json.dumps(b))')
+        BODY=$(APP="$APP_ID" SHA="$SHA" python3 -c 'import json,os; b={"app":os.environ["APP"],"commit":os.environ["SHA"],"workflow":os.environ.get("WF") or "security-review","methodology":os.environ.get("METH") or "","mode":os.environ.get("MODE") or "scripted"}; au=os.environ.get("AGENT_URL"); b.update({"agent_url":au} if au else {}); print(json.dumps(b))')
         echo "::group::POST $API_URL/workforce/run/start"
         RESP=$(curl -fsSL --max-time 60 -X POST "$API_URL/workforce/run/start" "${PHDR[@]}" --data-binary "$BODY" || echo '{}')
         JOB=$(echo "$RESP" | python3 -c 'import json,sys;print(json.load(sys.stdin).get("job_id",""))' 2>/dev/null || echo "")
