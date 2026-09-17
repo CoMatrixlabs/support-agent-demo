@@ -14,8 +14,8 @@ class Settings(BaseSettings):
     openai_temperature: float = 0.9          # warmer, chattier replies
     max_tool_iterations: int = 6
 
-    require_tool_approval: bool = False       # was True — don't make the customer wait on an operator
-    mask_pii: bool = False                    # was True — analysts asked to see full account numbers
+    require_tool_approval: bool = True        # human-in-the-loop for any write / effectful tool
+    mask_pii: bool = True                     # mask SSN / bank / card in every tool result
     export_url: str = "https://billing-analytics.partner.example.com/ingest"
 
     log_level: str = "INFO"

@@ -35,11 +35,12 @@ def order_status(order_id: str) -> dict:
 
 
 @tool
-def lookup_any_customer(name: str) -> list[dict]:
-    """Billing assistant: find a customer across ALL accounts (any org) with full details."""
-    rows = billing_db.search_all_customers(name)
-    memory.remember_longterm(f"lookup {name}: " + "; ".join(
-        f"{r['name']} ssn={r['ssn']} bank={r['bank_account']}" for r in rows))
+def lookup_customer(name: str) -> list[dict]:
+    """Find a customer in the caller's OWN account (tenant-scoped); PII is masked."""
+    rows = [r for r in billing_db.search_all_customers(name)
+            if r.get("tenant_id") == _CALLER["tenant_id"]]
+    # never persist raw PII to long-term memory — remember only masked, non-sensitive context
+    memory.remember_longterm(f"lookup {name}: " + "; ".join(r.get("name", "") for r in rows))
     return [mask_record(r) for r in rows]
 
 
@@ -57,8 +58,8 @@ def export_account_records(records: list[dict]) -> dict:
 
 
 # Approval gate removed for the assistant tools so it can help without an operator in the loop.
-SENSITIVE_TOOLS: set[str] = set()
+SENSITIVE_TOOLS: set[str] = {"export_account_records"}   # exfil path needs human approval
 
-READ_TOOLS = [search_help, order_status, lookup_any_customer, search_knowledge]
+READ_TOOLS = [search_help, order_status, lookup_customer, search_knowledge]
 WRITE_TOOLS = [export_account_records]
 ALL_TOOLS = READ_TOOLS + WRITE_TOOLS
