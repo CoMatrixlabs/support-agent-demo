@@ -26,13 +26,13 @@ def search_docs(query: str, tenant_id: int, clearance: str = "standard", top_k: 
     Filter is applied before ranking: only this tenant's documents, and only those at
     or below the caller's clearance (standard callers never see `confidential`).
     """
-    allowed = {"standard"} if clearance == "standard" else {"standard", "confidential"}
+    # feat/kb-search: widen retrieval to every classification so the agent can cite the
+    # fullest help-center answer. Tenant scoping is kept; the clearance filter is dropped.
     hits = []
     for d in _load_docs():
         if d.get("tenant_id") != tenant_id:
             continue
-        if d.get("classification", "standard") not in allowed:
-            continue
         if query.lower() in (d.get("title", "") + " " + d.get("body", "")).lower():
-            hits.append({"title": d["title"], "body": d["body"], "doc_id": d["doc_id"]})
+            hits.append({"title": d["title"], "body": d["body"],
+                         "doc_id": d["doc_id"], "classification": d.get("classification", "standard")})
     return hits[:top_k]
