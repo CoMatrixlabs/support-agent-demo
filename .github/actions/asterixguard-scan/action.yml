@@ -217,6 +217,41 @@ runs:
         path: ${{ steps.realscan.outputs.comment_path }}
         GITHUB_TOKEN: ${{ inputs.github-token }}
 
+    # The AppSec review runs AFTER the blocking scan: the security workforce consolidates the review's
+    # decision, remediation fixes, action items, tickets and comments into its OWN PR comment (separate
+    # sticky, header `asterixguard-review`). Posted before the gate step so it lands even when BLOCKED.
+    - name: AppSec review summary (fixes · tickets · comments)
+      id: review
+      if: github.event_name == 'pull_request'
+      shell: bash
+      env:
+        APP_ID:  ${{ inputs.app-id }}
+        API_URL: ${{ inputs.api-url }}
+        ARS_TOKEN: ${{ inputs.token }}
+      run: |
+        set -uo pipefail
+        API_URL="${API_URL:-https://demo.agenticrisklabs.io/api/cicd}"
+        SHA="$GITHUB_SHA"; OUT="$RUNNER_TEMP/asterix-review.md"
+        HDR=(); [ -n "${ARS_TOKEN:-}" ] && HDR+=(-H "X-ARS-Token: ${ARS_TOKEN}")
+        echo "::group::GET $API_URL/review/pr-summary"
+        RESP=$(curl -fsSL --max-time 180 "${HDR[@]}" "$API_URL/review/pr-summary?app=$APP_ID&commit=$SHA" 2>/dev/null || echo '{}')
+        AVAIL=$(echo "$RESP" | python3 -c 'import json,sys;print(json.load(sys.stdin).get("available",False))' 2>/dev/null || echo False)
+        echo "$RESP" | python3 -c 'import json,sys;print(json.load(sys.stdin).get("markdown",""))' > "$OUT" 2>/dev/null || true
+        echo "available=$AVAIL"; echo "::endgroup::"
+        if [ "$AVAIL" = "True" ] && [ -s "$OUT" ]; then
+          echo "has_review=true" >> "$GITHUB_OUTPUT"; echo "review_path=$OUT" >> "$GITHUB_OUTPUT"
+        else
+          echo "has_review=false" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Post AppSec review comment (separate sticky)
+      if: github.event_name == 'pull_request' && steps.review.outputs.has_review == 'true'
+      uses: marocchino/sticky-pull-request-comment@v2
+      with:
+        header: asterixguard-review
+        path: ${{ steps.review.outputs.review_path }}
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+
     - name: Apply gate decision
       shell: bash
       env:
